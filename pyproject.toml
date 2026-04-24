@@ -1,7 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "novel-ai"
+name = "novel-cli"
 version = "0.1.0"
-description = "Add your description here"
+description = "Global CLI for novel writing with DeepSeek"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.10"
+dependencies = [
+  "openai>=1.0.0",
+  "python-dotenv>=1.0.0",
+  "pyyaml>=6.0.0",
+]
+
+[project.scripts]
+novel = "novel_cli.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8.0.0"]
+
+[tool.setuptools.packages.find]
+include = ["novel_cli*"]
+
+[tool.setuptools.package-data]
+novel_cli = ["templates/**/*.md", "templates/**/*.yaml", "templates/**/*.txt"]

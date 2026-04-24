@@ -1,0 +1,25 @@
+project_name: {{PROJECT_NAME}}
+language: zh-CN
+
+model:
+  provider: deepseek
+  name: deepseek-chat
+  temperature: 0.7
+
+paths:
+  chapters: chapters
+  drafts: drafts
+  summaries: summaries
+  prompts: prompts
+  docs: docs
+
+context:
+  style: docs/style.md
+  characters: docs/characters.md
+  worldbuilding: docs/worldbuilding.md
+  timeline: docs/timeline.md
+  glossary: docs/glossary.md
+  story_so_far: summaries/story-so-far.md
+
+output:
+  overwrite: false
