@@ -72,12 +72,22 @@ class UserConfigInitResult:
     created: bool
 
 
-def load_project_config(project_root: Path) -> ProjectConfig:
+@dataclass(slots=True, frozen=True)
+class RuntimeConfigOverrides:
+    model_name: str | None = None
+    temperature: float | None = None
+
+
+def load_project_config(
+    project_root: Path,
+    overrides: RuntimeConfigOverrides | None = None,
+) -> ProjectConfig:
     project_root = project_root.resolve()
     _load_project_env(project_root)
     user_config = load_user_config()
     raw_config = _read_yaml(project_root / "novel.yaml")
     _validate_project_config_schema(raw_config)
+    overrides = overrides or RuntimeConfigOverrides()
 
     project_name = str(raw_config.get("project_name") or project_root.name)
     language = str(raw_config.get("language") or DEFAULT_LANGUAGE)
@@ -85,8 +95,8 @@ def load_project_config(project_root: Path) -> ProjectConfig:
     api_data = _ensure_dict(raw_config.get("api"), "api")
     model_data = _ensure_dict(raw_config.get("model"), "model")
     base_url = _resolve_base_url(api_data, user_config)
-    model_name = _resolve_model_name(model_data, user_config)
-    temperature = _resolve_temperature(model_data, user_config)
+    model_name = overrides.model_name or _resolve_model_name(model_data, user_config)
+    temperature = overrides.temperature if overrides.temperature is not None else _resolve_temperature(model_data, user_config)
 
     paths_data = _ensure_dict(raw_config.get("paths"), "paths")
     paths = PathConfig(

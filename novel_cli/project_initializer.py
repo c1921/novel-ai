@@ -20,6 +20,7 @@ TEMPLATE_FILES = [
     "AGENTS.md",
     "prompts/polish.md",
     "prompts/continue.md",
+    "prompts/rewrite.md",
     "prompts/summarize.md",
     "docs/style.md",
     "docs/characters.md",

@@ -29,6 +29,10 @@
 
 {{CHAPTER_TEXT}}
 
+## 额外要求
+
+{{INSTRUCTION}}
+
 ## 输出要求
 
 使用以下 Markdown 结构输出：

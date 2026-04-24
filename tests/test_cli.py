@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+import json
 
 import pytest
 
@@ -22,6 +23,7 @@ def test_init_creates_project_files(workspace_dir, monkeypatch, capsys) -> None:
     assert "name: gpt-4.1-mini" in project_config
     assert (workspace_dir / "AGENTS.md").exists()
     assert (workspace_dir / "prompts" / "polish.md").exists()
+    assert (workspace_dir / "prompts" / "rewrite.md").exists()
 
 
 def test_help_includes_init_config() -> None:
@@ -359,3 +361,271 @@ def test_fill_errors_without_gap_marker(sample_project, monkeypatch, capsys) -> 
 
     assert exit_code == 1
     assert "GAP" in captured.err
+
+
+def test_rewrite_requires_instruction(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+
+    exit_code = main(["rewrite", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "--instruction" in captured.err
+
+
+def test_rewrite_writes_default_output(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "rewrite output")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["rewrite output"]))
+
+    exit_code = main(["rewrite", "chapters/001.md", "--instruction", "改成第一人称"])
+
+    assert exit_code == 0
+    assert (sample_project / "drafts" / "001.rewritten.md").read_text(encoding="utf-8") == "rewrite output"
+
+
+def test_instruction_is_injected_into_prompt(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    captured: dict[str, str] = {}
+
+    def fake_call_api_stream(**kwargs):
+        captured["prompt"] = kwargs["prompt"]
+        yield "output"
+
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
+
+    exit_code = main(["polish", "chapters/001.md", "--instruction", "语言更冷峻"])
+
+    assert exit_code == 0
+    assert "语言更冷峻" in captured["prompt"]
+
+
+def test_cli_runtime_overrides_model_and_temperature(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setenv("NOVEL_MODEL", "gpt-4.1-mini-env")
+    monkeypatch.setenv("NOVEL_TEMPERATURE", "0.1")
+    captured: dict[str, object] = {}
+
+    def fake_call_api_stream(**kwargs):
+        captured["model"] = kwargs["model"]
+        captured["temperature"] = kwargs["temperature"]
+        yield "output"
+
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
+
+    exit_code = main(
+        [
+            "polish",
+            "chapters/001.md",
+            "--model",
+            "gpt-4.1-cli",
+            "--temperature",
+            "0.9",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {
+        "model": "gpt-4.1-cli",
+        "temperature": 0.9,
+    }
+
+
+def test_project_flag_uses_explicit_project_root(sample_project, workspace_dir, monkeypatch) -> None:
+    outside_dir = workspace_dir / "outside"
+    outside_dir.mkdir()
+    monkeypatch.chdir(outside_dir)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "project flag output")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["project flag output"]),
+    )
+
+    exit_code = main(
+        [
+            "polish",
+            "chapters/001.md",
+            "--project",
+            str(sample_project),
+        ]
+    )
+
+    assert exit_code == 0
+    assert (sample_project / "drafts" / "001.polished.md").read_text(encoding="utf-8") == "project flag output"
+
+
+def test_prompt_flag_uses_explicit_template(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    prompt_path = sample_project / "custom.md"
+    prompt_path.write_text("CUSTOM {{INSTRUCTION}} {{CHAPTER_TEXT}}", encoding="utf-8")
+    captured: dict[str, str] = {}
+
+    def fake_call_api_stream(**kwargs):
+        captured["prompt"] = kwargs["prompt"]
+        yield "output"
+
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
+
+    exit_code = main(
+        [
+            "polish",
+            "chapters/001.md",
+            "--instruction",
+            "保持克制",
+            "--prompt",
+            "custom.md",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["prompt"] == "CUSTOM 保持克制 第一章的正文内容。"
+
+
+def test_dry_run_prints_prompt_without_calling_api(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+
+    def fail_call(**_kwargs):
+        raise AssertionError("API should not be called during dry-run")
+
+    monkeypatch.setattr("novel_cli.cli.call_api", fail_call)
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fail_call)
+
+    exit_code = main(["polish", "chapters/001.md", "--dry-run"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "# 润色任务" in captured.out
+    assert not (sample_project / "drafts" / "001.polished.md").exists()
+
+
+def test_dry_run_writes_prompt_to_custom_output(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+
+    def fail_call(**_kwargs):
+        raise AssertionError("API should not be called during dry-run")
+
+    monkeypatch.setattr("novel_cli.cli.call_api", fail_call)
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fail_call)
+
+    exit_code = main(
+        [
+            "polish",
+            "chapters/001.md",
+            "--dry-run",
+            "--out",
+            "drafts/prompt-preview.md",
+        ]
+    )
+
+    assert exit_code == 0
+    prompt_output = sample_project / "drafts" / "prompt-preview.md"
+    assert prompt_output.exists()
+    assert "# 润色任务" in prompt_output.read_text(encoding="utf-8")
+
+
+def test_json_output_returns_payload_and_disables_streaming(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    call_api_called: list[bool] = []
+
+    def fake_call_api(**_kwargs):
+        call_api_called.append(True)
+        return "json output"
+
+    def fail_stream(**_kwargs):
+        raise AssertionError("streaming should be disabled for --json")
+
+    monkeypatch.setattr("novel_cli.cli.call_api", fake_call_api)
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fail_stream)
+
+    exit_code = main(["polish", "chapters/001.md", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert call_api_called == [True]
+    assert captured.err == ""
+    assert payload["status"] == "ok"
+    assert payload["mode"] == "polish"
+    assert payload["output"].endswith("drafts\\001.polished.md") or payload["output"].endswith("drafts/001.polished.md")
+
+
+def test_overwrite_flag_overwrites_existing_output(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    output = sample_project / "drafts" / "001.polished.md"
+    output.write_text("old", encoding="utf-8")
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "new")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["new"]))
+
+    exit_code = main(["polish", "chapters/001.md", "--overwrite"])
+
+    assert exit_code == 0
+    assert output.read_text(encoding="utf-8") == "new"
+    assert not (sample_project / "drafts" / "001.polished.v2.md").exists()
+
+
+def test_custom_out_path_versions_when_target_exists(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    output = sample_project / "drafts" / "custom.md"
+    output.write_text("old", encoding="utf-8")
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "new")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["new"]))
+
+    exit_code = main(["polish", "chapters/001.md", "--out", "drafts/custom.md"])
+
+    assert exit_code == 0
+    assert output.read_text(encoding="utf-8") == "old"
+    assert (sample_project / "drafts" / "custom.v2.md").read_text(encoding="utf-8") == "new"
+
+
+def test_out_flag_rejects_writing_into_chapters(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "unused")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["unused"]))
+
+    exit_code = main(["polish", "chapters/001.md", "--out", "chapters/001.polished.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "Refusing to write output inside chapters" in captured.err
+
+
+def test_context_command_outputs_json_preview(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+
+    exit_code = main(["context", "chapters/001.md", "--mode", "polish", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert payload["status"] == "ok"
+    assert payload["mode"] == "polish"
+    assert payload["prompt_length"] > 0
+    assert payload["output_preview"].endswith("drafts\\001.polished.md") or payload["output_preview"].endswith("drafts/001.polished.md")
+
+
+def test_config_doctor_reports_blocking_issues_and_warnings(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    (sample_project / "docs" / "worldbuilding.md").unlink()
+
+    exit_code = main(["config", "doctor", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 1
+    assert payload["status"] == "error"
+    assert any("NOVEL_API_KEY" in issue for issue in payload["blocking_issues"])
+    assert any("worldbuilding" in warning for warning in payload["warnings"])
+
+
+def test_config_doctor_succeeds_when_environment_is_ready(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setenv("NOVEL_API_KEY", "test-key")
+
+    exit_code = main(["config", "doctor", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert exit_code == 0
+    assert payload["status"] == "ok"
+    assert payload["blocking_issues"] == []

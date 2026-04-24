@@ -27,13 +27,14 @@ class GenerationContext:
     chapter_text: str
     sections: dict[str, str]
     warnings: list[str]
+    instruction: str = ""
     before_gap: str = ""
     after_gap: str = ""
 
     def template_variables(self) -> dict[str, str]:
         result: dict[str, str] = {
             "CHAPTER_TEXT": self.chapter_text,
-            "INSTRUCTION": "",
+            "INSTRUCTION": self.instruction,
             **self.sections,
         }
         if self.mode == "fill":
@@ -42,8 +43,15 @@ class GenerationContext:
         return result
 
 
-def load_generation_context(project_root: Path, chapter_file: str | Path, mode: str) -> GenerationContext:
-    config = load_project_config(project_root)
+def load_generation_context(
+    project_root: Path,
+    chapter_file: str | Path,
+    mode: str,
+    *,
+    instruction: str = "",
+    config: ProjectConfig | None = None,
+) -> GenerationContext:
+    config = config or load_project_config(project_root)
     chapter_path = _resolve_chapter_path(config, chapter_file)
     chapter_text = _read_required_text(chapter_path, "chapter")
 
@@ -81,6 +89,7 @@ def load_generation_context(project_root: Path, chapter_file: str | Path, mode: 
         chapter_text=chapter_text,
         sections=sections,
         warnings=warnings,
+        instruction=instruction,
         before_gap=before_gap,
         after_gap=after_gap,
     )

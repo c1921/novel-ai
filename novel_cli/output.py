@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 
@@ -55,6 +56,66 @@ def print_generation_summary(
     print(f"Input: {input_path}")
     print(f"Template: {template_source}")
     print(f"Output: {output_path}")
+
+
+def print_context_summary(
+    *,
+    mode: str,
+    project_root: Path,
+    input_path: Path,
+    template_source: str,
+    output_path: Path,
+    model: str,
+    temperature: float,
+    base_url: str,
+    prompt_length: int,
+    loaded_context: int,
+    total_context: int,
+    warnings: list[str],
+) -> None:
+    print(f"Mode: {mode}")
+    print(f"Project root: {project_root}")
+    print(f"Input: {input_path}")
+    print(f"Template: {template_source}")
+    print(f"Output: {output_path}")
+    print(f"Model: {model}")
+    print(f"Temperature: {temperature}")
+    print(f"Base URL: {base_url}")
+    print(f"Loaded context: {loaded_context}/{total_context}")
+    print(f"Estimated prompt length: {prompt_length}")
+    if warnings:
+        print("Warnings:")
+        for warning in warnings:
+            print(f"- {warning}")
+
+
+def print_doctor_summary(
+    *,
+    project_root: Path | None,
+    blocking_issues: list[str],
+    warnings: list[str],
+) -> None:
+    status = "ok" if not blocking_issues else "error"
+    print(f"Status: {status}")
+    if project_root is not None:
+        print(f"Project root: {project_root}")
+    print("Blocking issues:")
+    if blocking_issues:
+        for issue in blocking_issues:
+            print(f"- {issue}")
+    else:
+        print("- none")
+
+    print("Warnings:")
+    if warnings:
+        for warning in warnings:
+            print(f"- {warning}")
+    else:
+        print("- none")
+
+
+def print_json_payload(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def print_warning(message: str) -> None:

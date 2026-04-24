@@ -8,6 +8,7 @@ from novel_cli.config import (
     DEFAULT_BASE_URL,
     DEFAULT_MODEL_NAME,
     DEFAULT_TEMPERATURE,
+    RuntimeConfigOverrides,
     get_api_base_url,
     load_project_config,
 )
@@ -184,6 +185,22 @@ def test_load_project_config_applies_environment_precedence(workspace_dir, user_
     assert config.model.name == "gpt-4.1-mini-env"
     assert config.model.temperature == 0.1
     assert get_api_base_url(workspace_dir) == "https://env.example/v1"
+
+
+def test_load_project_config_applies_runtime_overrides(workspace_dir, monkeypatch) -> None:
+    monkeypatch.setenv("NOVEL_MODEL", "gpt-4.1-mini-env")
+    monkeypatch.setenv("NOVEL_TEMPERATURE", "0.1")
+
+    config = load_project_config(
+        workspace_dir,
+        overrides=RuntimeConfigOverrides(
+            model_name="gpt-4.1-cli",
+            temperature=0.9,
+        ),
+    )
+
+    assert config.model.name == "gpt-4.1-cli"
+    assert config.model.temperature == 0.9
 
 
 def test_load_user_config_errors_for_invalid_structure(user_config_file) -> None:
