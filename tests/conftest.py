@@ -36,7 +36,7 @@ def isolate_user_config(user_config_file: Path) -> None:
 def reset_verbose() -> None:
     """Reset verbose flag before each test to avoid cross-test leaks."""
     from novel_cli.output import set_verbose
-    set_verbose(False)
+    set_verbose(True)
 
 
 @pytest.fixture(autouse=True)

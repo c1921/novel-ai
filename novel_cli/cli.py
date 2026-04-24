@@ -34,10 +34,10 @@ def build_parser() -> argparse.ArgumentParser:
         description="Global CLI for Chinese fiction workflows backed by an OpenAI-compatible API.",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-q", "--quiet",
         action="store_true",
         default=False,
-        help="Print detailed step-by-step progress to stderr.",
+        help="Suppress step-by-step progress output.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -55,7 +55,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    set_verbose(args.verbose)
+    set_verbose(not args.quiet)
 
     try:
         if args.command == "init":

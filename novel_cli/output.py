@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-_verbose = False
+_verbose = True
 
 
 def set_verbose(enabled: bool) -> None:

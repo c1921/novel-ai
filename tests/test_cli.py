@@ -194,23 +194,23 @@ def test_cli_returns_error_when_chapter_missing(sample_project, monkeypatch, cap
     assert "Chapter file does not exist" in captured.err
 
 
-def test_verbose_flag_is_parsed() -> None:
+def test_quiet_flag_is_parsed() -> None:
     parser = build_parser()
-    args = parser.parse_args(["-v", "polish", "chapters/001.md"])
-    assert args.verbose is True
+    args = parser.parse_args(["-q", "polish", "chapters/001.md"])
+    assert args.quiet is True
 
-    args = parser.parse_args(["--verbose", "polish", "chapters/001.md"])
-    assert args.verbose is True
+    args = parser.parse_args(["--quiet", "polish", "chapters/001.md"])
+    assert args.quiet is True
 
     args = parser.parse_args(["polish", "chapters/001.md"])
-    assert args.verbose is False
+    assert args.quiet is False
 
 
-def test_verbose_produces_step_output(sample_project, monkeypatch, capsys) -> None:
+def test_default_produces_step_output(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
 
-    exit_code = main(["-v", "polish", "chapters/001.md"])
+    exit_code = main(["polish", "chapters/001.md"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -224,11 +224,11 @@ def test_verbose_produces_step_output(sample_project, monkeypatch, capsys) -> No
     assert "Output:" in captured.out
 
 
-def test_non_verbose_no_step_output(sample_project, monkeypatch, capsys) -> None:
+def test_quiet_suppresses_step_output(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "generated content")
 
-    exit_code = main(["polish", "chapters/001.md"])
+    exit_code = main(["-q", "polish", "chapters/001.md"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -237,11 +237,11 @@ def test_non_verbose_no_step_output(sample_project, monkeypatch, capsys) -> None
     assert "Mode: polish" in captured.out
 
 
-def test_verbose_shows_api_and_response_info(sample_project, monkeypatch, capsys) -> None:
+def test_default_shows_api_and_response_info(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
 
-    exit_code = main(["-v", "polish", "chapters/001.md"])
+    exit_code = main(["polish", "chapters/001.md"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
