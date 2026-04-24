@@ -53,7 +53,7 @@ pytest tests/test_config.py -v
 
 | 文件 | 覆盖内容 |
 |---|---|
-| `test_cli.py` | 命令调用：init、init-config、生成输出、版本化、警告、配置优先级、错误场景 |
+| `test_cli.py` | 命令调用：init、init-config、rewrite/context/config doctor、dry-run/json、输出版本化、配置优先级、错误场景 |
 | `test_config.py` | 配置加载：默认值、YAML 读取、环境变量优先级、用户配置回退、项目优先用户、旧键拒绝 |
 | `test_api_client.py` | 缺少 API key 的错误 |
 | `test_file_utils.py` | 输出版本化（v2 → v3） |
@@ -82,7 +82,7 @@ pytest tests/test_config.py -v
 - **Python 3.10+**，使用 `from __future__ import annotations` 支持前向引用
 - **dataclasses**（slotted）定义数据结构
 - **argparse** 处理 CLI——不使用第三方 CLI 框架
-- `api_client.py` 返回**纯字符串**——暂不支持流式或分块响应
+- `api_client.py` 同时支持阻塞式返回和流式 token 输出
 - **`importlib.resources`** 加载包数据（模板）
 - **`platformdirs`** 处理跨平台配置路径
 - 模块职责单一：每个文件一个清晰的职责

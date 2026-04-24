@@ -46,7 +46,9 @@ novel_cli/
     prompts/               # 内置兜底 prompt 模板
       polish.md
       continue.md
+      rewrite.md
       summarize.md
+      fill.md
     project/               # novel init 用的项目模板
       novel.yaml
       AGENTS.md
@@ -89,31 +91,31 @@ novel polish chapters/003.md
 ## 模块职责
 
 ### `cli.py`
-入口模块。用 argparse 设置子命令（`init`、`init-config`、`polish`、`continue`、`summarize`）。解析项目根目录和配置后分发给对应处理函数。
+入口模块。用 argparse 设置子命令（`init`、`init-config`、`polish`、`continue`、`rewrite`、`summarize`、`fill`、`context`、`config doctor`），解析统一的生成参数，并分发到共享执行管线。
 
 ### `config.py`
-定义数据类：`ProjectConfig`、`UserConfig`，以及三层配置合并辅助函数。同时负责校验和拒绝旧配置键。读取 `novel.yaml`、用户级 `config.yaml` 和 `.env`。
+定义数据类：`ProjectConfig`、`UserConfig`，以及配置合并辅助函数。同时负责校验和拒绝旧配置键。读取 `novel.yaml`、用户级 `config.yaml` 和 `.env`，并应用命令行运行时覆盖。
 
 ### `api_client.py`
 封装 OpenAI Python SDK。接收 prompt 字符串、base URL、模型名、温度和可选的 system prompt。返回纯文本响应。处理缺少 API key、网络错误和 API 错误，报出清晰错误信息。
 
 ### `project_detector.py`
-从当前工作目录向上遍历，查找 `novel.yaml`。回退方案：检查当前目录是否含 `chapters/`。返回项目根目录路径或抛出 `NovelCliError`。
+从当前工作目录向上遍历，查找 `novel.yaml`。回退方案：检查当前目录是否含 `chapters/`。同时支持 `--project` 显式指定项目根目录。
 
 ### `project_initializer.py`
 实现 `novel init`。从 `templates/project/` 复制模板文件到当前目录。已存在的文件会被跳过，不会覆盖用户内容。
 
 ### `context_loader.py`
-读取目标章节文件，并根据 `novel.yaml` 中的路径选择性地读取上下文文件。可选文件缺失时输出 warning，不中断执行。
+读取目标章节文件，并根据 `novel.yaml` 中的路径选择性地读取上下文文件。可选文件缺失时输出 warning，不中断执行；同时负责注入 `--instruction` 和 `fill` 模式的 GAP 分段信息。
 
 ### `prompt_builder.py`
-为给定模式解析 prompt 模板：先检查项目特定模板（如 `prompts/polish.md`），不存在则回退到内置模板。将模板变量替换为实际内容。
+为给定模式解析 prompt 模板：先检查 `--prompt` 显式模板，再检查项目特定模板（如 `prompts/polish.md`），最后回退到内置模板。将模板变量替换为实际内容。
 
 ### `file_utils.py`
-根据模式和章节名确定输出文件路径。目标文件已存在时处理版本化命名（如 `001.polished.v2.md`）。
+根据模式和章节名确定输出文件路径。目标文件已存在时处理版本化命名（如 `001.polished.v2.md`），并拒绝写入 `chapters/`。
 
 ### `output.py`
-格式化终端输出：初始化摘要、生成结果摘要（输入、输出、模型、警告）和错误信息。
+格式化终端输出：初始化摘要、生成结果摘要、上下文预览、配置诊断、JSON 结果和错误信息。
 
 ### `errors.py`
 定义 `NovelCliError`——包含 `message` 字符串和可选 `hint` 字符串的数据类。
@@ -146,14 +148,14 @@ novel polish chapters/003.md
 - [x] 安全输出与版本化
 
 ### 阶段 2 — 增强可控性
-- [ ] `--instruction`、`--out`、`--model`、`--temperature`
-- [ ] `--prompt`、`--dry-run`、`--json`、`--overwrite`
-- [ ] `--project`
+- [x] `--instruction`、`--out`、`--model`、`--temperature`
+- [x] `--prompt`、`--dry-run`、`--json`、`--overwrite`
+- [x] `--project`
 
 ### 阶段 3 — 扩展命令
-- [ ] `novel rewrite`
-- [ ] `novel context`
-- [ ] `novel config doctor`
+- [x] `novel rewrite`
+- [x] `novel context`
+- [x] `novel config doctor`
 - [ ] `novel update-story-so-far`
 
 ### 阶段 4 — 代理集成

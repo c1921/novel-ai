@@ -21,16 +21,16 @@
 
 ## Deferred
 
-- [ ] `novel rewrite`
-- [ ] `novel context`
-- [ ] `novel config doctor`
-- [ ] `--project`
-- [ ] `--instruction`
-- [ ] `--out`
-- [ ] `--model`
-- [ ] `--temperature`
-- [ ] `--prompt`
-- [ ] `--dry-run`
-- [ ] `--json`
-- [ ] `--overwrite`
+- [x] `novel rewrite`
+- [x] `novel context`
+- [x] `novel config doctor`
+- [x] `--project`
+- [x] `--instruction`
+- [x] `--out`
+- [x] `--model`
+- [x] `--temperature`
+- [x] `--prompt`
+- [x] `--dry-run`
+- [x] `--json`
+- [x] `--overwrite`
 - [ ] Codex skill 集成
