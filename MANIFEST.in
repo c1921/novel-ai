@@ -1,0 +1,2 @@
+recursive-include novel_cli/templates *.md *.yaml *.txt
+include novel_cli/templates/project/.gitignore

@@ -2,7 +2,7 @@
 
 This is a Chinese fiction project.
 
-Use the globally installed `novel` CLI for AI writing tasks. Do not assume the CLI source code exists inside this repository.
+Use the globally installed `novel` CLI for AI writing tasks backed by your configured OpenAI-compatible API provider. Do not assume the CLI source code exists inside this repository.
 
 ## Commands
 

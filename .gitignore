@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+*.egg
 
 # Virtual environments
 .venv
@@ -12,4 +13,18 @@ wheels/
 .pytest_cache/
 .test-workspaces/
 .tmp/
+.pipx/
+.pipx-bin/
 pytest-cache-files-*
+
+# Testing & coverage
+.coverage
+htmlcov/
+
+# Type checking & linting
+.mypy_cache/
+.ruff_cache/
+
+# Claude Code
+.claude
+

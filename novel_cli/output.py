@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 
 from .errors import NovelCliError
+from .config import UserConfigInitResult
 from .project_initializer import InitResult
 
 
@@ -13,6 +14,13 @@ def print_init_summary(result: InitResult) -> None:
         print(f"Created: {path}")
     for path in result.skipped:
         print(f"Skipped existing: {path}")
+
+
+def print_user_config_init_summary(result: UserConfigInitResult) -> None:
+    if result.created:
+        print(f"Created user config: {result.config_path}")
+    else:
+        print(f"Skipped existing user config: {result.config_path}")
 
 
 def print_generation_summary(

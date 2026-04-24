@@ -5,11 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "novel-cli"
 version = "0.1.0"
-description = "Global CLI for novel writing with DeepSeek"
+description = "Global CLI for novel writing with an OpenAI-compatible API"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "openai>=1.0.0",
+  "platformdirs>=4.0.0",
   "python-dotenv>=1.0.0",
   "pyyaml>=6.0.0",
 ]
@@ -24,4 +25,9 @@ test = ["pytest>=8.0.0"]
 include = ["novel_cli*"]
 
 [tool.setuptools.package-data]
-novel_cli = ["templates/**/*.md", "templates/**/*.yaml", "templates/**/*.txt"]
+novel_cli = [
+  "templates/**/*.md",
+  "templates/**/*.yaml",
+  "templates/**/*.txt",
+  "templates/project/.gitignore",
+]

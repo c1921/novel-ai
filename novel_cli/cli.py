@@ -4,11 +4,17 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
+from .api_client import call_api
+from .config import init_user_config
 from .context_loader import load_generation_context
-from .deepseek_client import call_deepseek
 from .errors import NovelCliError
 from .file_utils import determine_output_path, write_output_file
-from .output import print_error, print_generation_summary, print_init_summary
+from .output import (
+    print_error,
+    print_generation_summary,
+    print_init_summary,
+    print_user_config_init_summary,
+)
 from .project_detector import detect_project_root
 from .project_initializer import init_project
 from .prompt_builder import build_prompt
@@ -23,11 +29,12 @@ GENERATION_HELP = {
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="novel",
-        description="Global CLI for Chinese fiction workflows backed by DeepSeek.",
+        description="Global CLI for Chinese fiction workflows backed by an OpenAI-compatible API.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init", help="Initialize a novel project in the current directory.")
+    subparsers.add_parser("init-config", help="Initialize the user-level CLI config file.")
 
     for mode, help_text in GENERATION_HELP.items():
         command = subparsers.add_parser(mode, help=help_text)
@@ -43,6 +50,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "init":
             return _run_init()
+        if args.command == "init-config":
+            return _run_init_config()
         return _run_generation(args.command, args.chapter_file)
     except NovelCliError as exc:
         print_error(exc)
@@ -55,13 +64,20 @@ def _run_init() -> int:
     return 0
 
 
+def _run_init_config() -> int:
+    result = init_user_config()
+    print_user_config_init_summary(result)
+    return 0
+
+
 def _run_generation(mode: str, chapter_file: str) -> int:
     project_root = detect_project_root(Path.cwd())
     context = load_generation_context(project_root, chapter_file, mode)
     prompt_result = build_prompt(context)
     output_path = determine_output_path(context.config, context.chapter_path, mode)
-    generated_text = call_deepseek(
+    generated_text = call_api(
         prompt=prompt_result.prompt,
+        base_url=context.config.api.base_url,
         model=context.config.model.name,
         temperature=context.config.model.temperature,
     )

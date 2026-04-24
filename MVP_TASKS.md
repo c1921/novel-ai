@@ -12,9 +12,12 @@
 - [x] 实现 `novel summarize`
 - [x] 实现项目 prompt 优先、内置 prompt 兜底
 - [x] 实现默认输出路径和版本号递增防覆盖
-- [x] 实现 DeepSeek 客户端封装和清晰错误提示
+- [x] 实现 OpenAI 兼容 API 客户端封装和清晰错误提示
 - [x] 补齐内置模板和 `novel init` 生成模板
 - [x] 为 happy path、错误路径、模板回退和输出版本化补测试
+- [x] 支持用户级全局配置读取
+- [x] 实现 `novel init-config`
+- [x] 补齐 `pipx` 全局安装说明
 
 ## Deferred
 
@@ -30,5 +33,4 @@
 - [ ] `--dry-run`
 - [ ] `--json`
 - [ ] `--overwrite`
-- [ ] 用户级全局配置
 - [ ] Codex skill 集成
