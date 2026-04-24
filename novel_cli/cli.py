@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from .api_client import call_api
+from .api_client import call_api, call_api_stream
 from .config import init_user_config
 from .context_loader import load_generation_context
 from .errors import NovelCliError
@@ -39,6 +39,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Suppress step-by-step progress output.",
     )
+    parser.add_argument(
+        "--no-stream",
+        action="store_true",
+        default=False,
+        help="Disable streaming output. Wait for the full response before printing.",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("init", help="Initialize a novel project in the current directory.")
@@ -62,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _run_init()
         if args.command == "init-config":
             return _run_init_config()
-        return _run_generation(args.command, args.chapter_file)
+        return _run_generation(args.command, args.chapter_file, stream=not args.no_stream)
     except NovelCliError as exc:
         print_error(exc)
         return 1
@@ -80,7 +86,7 @@ def _run_init_config() -> int:
     return 0
 
 
-def _run_generation(mode: str, chapter_file: str) -> int:
+def _run_generation(mode: str, chapter_file: str, *, stream: bool = True) -> int:
     # Step 1: Detect project root
     project_root = detect_project_root(Path.cwd())
     print_step(f"[步骤 1/7] 检测项目: 项目根目录 {project_root}")
@@ -127,19 +133,43 @@ def _run_generation(mode: str, chapter_file: str) -> int:
     print_step(f"[步骤 4/7] 确定输出路径: {output_path}")
 
     # Step 5: Call API
-    print_step(
-        f"[步骤 5/7] 调用 API: 模型 {context.config.model.name}, "
-        f"Base URL {context.config.api.base_url}, "
-        f"温度 {context.config.model.temperature}, "
-        f"提示词 {len(prompt_result.prompt)} 字符, 请等待..."
-    )
-    generated_text = call_api(
-        prompt=prompt_result.prompt,
-        base_url=context.config.api.base_url,
-        model=context.config.model.name,
-        temperature=context.config.model.temperature,
-    )
-    print_step(f"[步骤 5/7] API 调用完成: 响应长度 {len(generated_text)} 字符")
+    if stream:
+        print_step(
+            f"[步骤 5/7] 调用 API (流式): 模型 {context.config.model.name}, "
+            f"Base URL {context.config.api.base_url}, "
+            f"温度 {context.config.model.temperature}, "
+            f"提示词 {len(prompt_result.prompt)} 字符"
+        )
+        generated_text_parts: list[str] = []
+        try:
+            for token in call_api_stream(
+                prompt=prompt_result.prompt,
+                base_url=context.config.api.base_url,
+                model=context.config.model.name,
+                temperature=context.config.model.temperature,
+            ):
+                print(token, end="", flush=True)
+                generated_text_parts.append(token)
+        except Exception:
+            print()
+            raise
+        print()
+        generated_text = "".join(generated_text_parts)
+        print_step(f"[步骤 5/7] API 调用完成: 响应长度 {len(generated_text)} 字符")
+    else:
+        print_step(
+            f"[步骤 5/7] 调用 API: 模型 {context.config.model.name}, "
+            f"Base URL {context.config.api.base_url}, "
+            f"温度 {context.config.model.temperature}, "
+            f"提示词 {len(prompt_result.prompt)} 字符, 请等待..."
+        )
+        generated_text = call_api(
+            prompt=prompt_result.prompt,
+            base_url=context.config.api.base_url,
+            model=context.config.model.name,
+            temperature=context.config.model.temperature,
+        )
+        print_step(f"[步骤 5/7] API 调用完成: 响应长度 {len(generated_text)} 字符")
 
     # Step 6: Write output
     write_output_file(output_path, generated_text)

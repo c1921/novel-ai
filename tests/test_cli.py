@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+
 import pytest
 
 from novel_cli.cli import build_parser, main
@@ -70,6 +72,10 @@ def test_generation_commands_write_outputs(
 ) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: f"{mode} output")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter([f"{mode} output"]),
+    )
 
     exit_code = main([mode, "chapters/001.md"])
 
@@ -81,6 +87,10 @@ def test_generation_versions_existing_output(sample_project, monkeypatch) -> Non
     monkeypatch.chdir(sample_project)
     (sample_project / "drafts" / "001.polished.md").write_text("old", encoding="utf-8")
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "new")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["new"]),
+    )
 
     exit_code = main(["polish", "chapters/001.md"])
 
@@ -92,6 +102,10 @@ def test_generation_warns_for_missing_optional_context(sample_project, monkeypat
     monkeypatch.chdir(sample_project)
     (sample_project / "docs" / "worldbuilding.md").unlink()
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "output")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["output"]),
+    )
 
     exit_code = main(["polish", "chapters/001.md"])
     captured = capsys.readouterr()
@@ -119,13 +133,13 @@ def test_generation_uses_user_config_defaults(sample_project, user_config_file, 
     monkeypatch.chdir(sample_project)
     captured: dict[str, object] = {}
 
-    def fake_call_api(**kwargs):
+    def fake_call_api_stream(**kwargs):
         captured["base_url"] = kwargs["base_url"]
         captured["model"] = kwargs["model"]
         captured["temperature"] = kwargs["temperature"]
-        return "output"
+        yield "output"
 
-    monkeypatch.setattr("novel_cli.cli.call_api", fake_call_api)
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
 
     exit_code = main(["polish", "chapters/001.md"])
 
@@ -155,13 +169,13 @@ def test_generation_prefers_project_values_over_user_config(sample_project, user
     monkeypatch.chdir(sample_project)
     captured: dict[str, object] = {}
 
-    def fake_call_api(**kwargs):
+    def fake_call_api_stream(**kwargs):
         captured["base_url"] = kwargs["base_url"]
         captured["model"] = kwargs["model"]
         captured["temperature"] = kwargs["temperature"]
-        return "output"
+        yield "output"
 
-    monkeypatch.setattr("novel_cli.cli.call_api", fake_call_api)
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
 
     exit_code = main(["polish", "chapters/001.md"])
 
@@ -186,6 +200,7 @@ def test_cli_returns_error_when_project_root_missing(workspace_dir, monkeypatch,
 def test_cli_returns_error_when_chapter_missing(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "unused")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["unused"]))
 
     exit_code = main(["summarize", "chapters/999.md"])
     captured = capsys.readouterr()
@@ -209,6 +224,10 @@ def test_quiet_flag_is_parsed() -> None:
 def test_default_produces_step_output(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["生成的正文内容"]),
+    )
 
     exit_code = main(["polish", "chapters/001.md"])
     captured = capsys.readouterr()
@@ -218,7 +237,7 @@ def test_default_produces_step_output(sample_project, monkeypatch, capsys) -> No
     assert "[步骤 2/7] 加载上下文" in captured.err
     assert "[步骤 3/7] 构建提示词" in captured.err
     assert "[步骤 4/7] 确定输出路径" in captured.err
-    assert "[步骤 5/7] 调用 API" in captured.err
+    assert "调用 API" in captured.err
     assert "[步骤 6/7] 写入文件" in captured.err
     assert "Mode: polish" in captured.out
     assert "Output:" in captured.out
@@ -227,6 +246,10 @@ def test_default_produces_step_output(sample_project, monkeypatch, capsys) -> No
 def test_quiet_suppresses_step_output(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "generated content")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["generated content"]),
+    )
 
     exit_code = main(["-q", "polish", "chapters/001.md"])
     captured = capsys.readouterr()
@@ -240,6 +263,10 @@ def test_quiet_suppresses_step_output(sample_project, monkeypatch, capsys) -> No
 def test_default_shows_api_and_response_info(sample_project, monkeypatch, capsys) -> None:
     monkeypatch.chdir(sample_project)
     monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["生成的正文内容"]),
+    )
 
     exit_code = main(["polish", "chapters/001.md"])
     captured = capsys.readouterr()
@@ -250,3 +277,47 @@ def test_default_shows_api_and_response_info(sample_project, monkeypatch, capsys
     assert "温度" in captured.err
     assert "响应长度" in captured.err
     assert "提示词长度" in captured.err
+
+
+def test_no_stream_flag_is_parsed() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["--no-stream", "polish", "chapters/001.md"])
+    assert args.no_stream is True
+
+    args = parser.parse_args(["polish", "chapters/001.md"])
+    assert args.no_stream is False
+
+
+def test_no_stream_uses_blocking_call(sample_project, monkeypatch) -> None:
+    monkeypatch.chdir(sample_project)
+    call_api_called: list[bool] = []
+
+    def fake_call_api(**kwargs):
+        call_api_called.append(True)
+        return "non-streaming output"
+
+    monkeypatch.setattr("novel_cli.cli.call_api", fake_call_api)
+
+    exit_code = main(["--no-stream", "polish", "chapters/001.md"])
+
+    assert exit_code == 0
+    assert call_api_called == [True]
+    output = sample_project / "drafts" / "001.polished.md"
+    assert output.read_text("utf-8") == "non-streaming output"
+
+
+def test_quiet_suppresses_progress_but_not_streaming(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+
+    def fake_call_api_stream(**kwargs) -> Generator[str, None, None]:
+        yield "quiet"
+        yield " streamed"
+
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", fake_call_api_stream)
+
+    exit_code = main(["-q", "polish", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "[步骤" not in captured.err
+    assert "quiet streamed" in captured.out
