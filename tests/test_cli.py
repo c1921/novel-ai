@@ -192,3 +192,61 @@ def test_cli_returns_error_when_chapter_missing(sample_project, monkeypatch, cap
 
     assert exit_code == 1
     assert "Chapter file does not exist" in captured.err
+
+
+def test_verbose_flag_is_parsed() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["-v", "polish", "chapters/001.md"])
+    assert args.verbose is True
+
+    args = parser.parse_args(["--verbose", "polish", "chapters/001.md"])
+    assert args.verbose is True
+
+    args = parser.parse_args(["polish", "chapters/001.md"])
+    assert args.verbose is False
+
+
+def test_verbose_produces_step_output(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
+
+    exit_code = main(["-v", "polish", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "[步骤 1/7] 检测项目" in captured.err
+    assert "[步骤 2/7] 加载上下文" in captured.err
+    assert "[步骤 3/7] 构建提示词" in captured.err
+    assert "[步骤 4/7] 确定输出路径" in captured.err
+    assert "[步骤 5/7] 调用 API" in captured.err
+    assert "[步骤 6/7] 写入文件" in captured.err
+    assert "Mode: polish" in captured.out
+    assert "Output:" in captured.out
+
+
+def test_non_verbose_no_step_output(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "generated content")
+
+    exit_code = main(["polish", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "[步骤" not in captured.err
+    assert "[步骤" not in captured.out
+    assert "Mode: polish" in captured.out
+
+
+def test_verbose_shows_api_and_response_info(sample_project, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "生成的正文内容")
+
+    exit_code = main(["-v", "polish", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "gpt-4.1-mini" in captured.err
+    assert "https://api.openai.com/v1" in captured.err
+    assert "温度" in captured.err
+    assert "响应长度" in captured.err
+    assert "提示词长度" in captured.err

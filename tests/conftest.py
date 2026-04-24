@@ -33,6 +33,13 @@ def isolate_user_config(user_config_file: Path) -> None:
 
 
 @pytest.fixture(autouse=True)
+def reset_verbose() -> None:
+    """Reset verbose flag before each test to avoid cross-test leaks."""
+    from novel_cli.output import set_verbose
+    set_verbose(False)
+
+
+@pytest.fixture(autouse=True)
 def isolate_novel_env(monkeypatch) -> None:
     for env_name in (
         "NOVEL_API_KEY",

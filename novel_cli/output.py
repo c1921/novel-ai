@@ -3,6 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+_verbose = False
+
+
+def set_verbose(enabled: bool) -> None:
+    """Enable or disable verbose step-by-step output to stderr."""
+    global _verbose
+    _verbose = enabled
+
+
+def print_step(message: str) -> None:
+    """Print a step progress line to stderr when verbose mode is active."""
+    if _verbose:
+        print(message, file=sys.stderr)
+
+
 from .errors import NovelCliError
 from .config import UserConfigInitResult
 from .project_initializer import InitResult
