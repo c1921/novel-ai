@@ -1,50 +1,33 @@
 # novel-cli
 
-一个面向小说项目的全局 CLI，负责读取项目上下文、拼接 prompt、调用 OpenAI-compatible API，并把结果安全地写回项目目录。
+一个全局安装的小说写作 CLI，对接任意 OpenAI 兼容 API。
 
-当前版本是阶段 1 MVP，已实现：
+润色、续写、摘要你的章节——自动读取项目中的风格指南、人物设定、世界观和时间线，作为上下文参与生成。
 
-- `novel init`
-- `novel init-config`
-- `novel polish <chapter-file>`
-- `novel continue <chapter-file>`
-- `novel summarize <chapter-file>`
-
-## Requirements
+## 环境要求
 
 - Python `>=3.10`
-- OpenAI-compatible API key
+- 一个 OpenAI 兼容的 API key
 
-## Install
-
-推荐使用 `pipx` 全局安装：
+## 安装
 
 ```bash
+# 推荐：全局安装
 pipx install /path/to/novel-cli
-```
 
-开发阶段可以用可编辑安装：
-
-```bash
-pipx install -e /path/to/novel-cli
-```
-
-如果只是在仓库里本地开发，也可以：
-
-```bash
+# 或者本地可编辑安装
 pip install -e .
 ```
 
-安装后可直接使用：
+验证安装：
 
 ```bash
 novel --help
-novel init-config
 ```
 
-## Quick Start
+## 快速开始
 
-初始化一个小说项目：
+### 1. 创建小说项目
 
 ```bash
 mkdir my-novel
@@ -58,243 +41,149 @@ novel init
 my-novel/
   .gitignore
   AGENTS.md
-  novel.yaml
-  prompts/
-  docs/
-  chapters/
-  drafts/
-  summaries/
+  novel.yaml          # 项目配置
+  prompts/            # 自定义 prompt 模板
+  docs/               # 风格、人物、世界观等设定文件
+  chapters/           # 存放章节正文
+  drafts/             # AI 生成稿输出
+  summaries/          # 章节摘要
 ```
 
-为项目配置 API key，最少只需要：
+### 2. 配置 API key
+
+在项目根目录创建 `.env` 文件：
 
 ```env
-NOVEL_API_KEY=your_api_key_here
+NOVEL_API_KEY=你的_API_key
 ```
 
-如果你要覆盖默认接口和模型，也可以在项目 `.env` 中补充：
+可选：覆盖默认的 API 接口和模型：
 
 ```env
-NOVEL_API_KEY=your_api_key_here
 NOVEL_BASE_URL=https://api.openai.com/v1
 NOVEL_MODEL=gpt-4.1-mini
 NOVEL_TEMPERATURE=0.7
 ```
 
-把第一章放到 `chapters/001.md` 后，就可以执行：
+### 3. 开始写作
+
+把第一章放到 `chapters/001.md`，然后：
 
 ```bash
+# 润色章节（优化文笔，不改变剧情）
 novel polish chapters/001.md
+
+# 从章节结尾继续写作
 novel continue chapters/001.md
+
+# 生成章节摘要
 novel summarize chapters/001.md
 ```
 
-## Commands
+生成结果写入 `drafts/`（正文）或 `summaries/`（摘要），**绝对不会覆盖** `chapters/` 中的原文。
 
-### `novel init`
+## 命令
 
-在当前目录生成小说项目模板，不覆盖已有文件。
+| 命令 | 作用 | 默认输出位置 |
+|---|---|---|
+| `novel init` | 在当前目录生成小说项目模板 | — |
+| `novel init-config` | 创建用户级默认配置（API 接口、模型） | — |
+| `novel polish <文件>` | 润色章节，不改变剧情 | `drafts/<章节名>.polished.md` |
+| `novel continue <文件>` | 从章节结尾续写正文 | `drafts/<章节名>.continued.md` |
+| `novel summarize <文件>` | 生成结构化章节摘要 | `summaries/<章节名>.md` |
 
-### `novel init-config`
+## 项目结构
 
-在用户级配置目录生成 `config.yaml`，只写非敏感默认项，不覆盖已有文件。
+一个完整的小说项目目录如下：
 
-示例：
+```text
+my-novel/
+  novel.yaml              # 项目设置和上下文文件路径
+  .env                    # API key（不可提交）
+  .gitignore
+  AGENTS.md               # AI 代理指引
+
+  chapters/               # 章节原文（CLI 只读）
+    001.md
+    002.md
+
+  drafts/                 # AI 生成的正文
+    001.polished.md
+    001.continued.md
+
+  summaries/              # AI 生成的摘要
+    001.md
+    story-so-far.md
+
+  prompts/                # 自定义 prompt 模板（缺则回退内置）
+    polish.md
+    continue.md
+    summarize.md
+
+  docs/                   # 故事设定参考
+    style.md              # 文风指南
+    characters.md         # 人物设定与关系
+    worldbuilding.md      # 世界观、规则、阵营
+    timeline.md           # 事件时间线
+    glossary.md           # 专有名词对照
+```
+
+## 上下文文件
+
+CLI 在构造 prompt 时会自动读取以下文件，让 AI 全面了解你的故事：
+
+| 文件 | 内容 |
+|---|---|
+| `docs/style.md` | 文风、叙事节奏、禁忌表达 |
+| `docs/characters.md` | 人物设定、关系、说话方式 |
+| `docs/worldbuilding.md` | 世界观、地点、阵营 |
+| `docs/timeline.md` | 事件顺序和时间线 |
+| `docs/glossary.md` | 专有名词参考 |
+| `summaries/story-so-far.md` | 前情摘要 |
+
+缺失的上下文文件只会产生 warning，不会中断命令执行。
+
+## 自定义 Prompt 模板
+
+在 `prompts/` 中创建你自己的 prompt 模板，定制 AI 的行为方式。支持的模板变量：
+
+- `{{CHAPTER_TEXT}}` — 章节正文
+- `{{STYLE_GUIDE}}` — `docs/style.md` 的内容
+- `{{CHARACTERS}}` — `docs/characters.md` 的内容
+- `{{WORLDBUILDING}}` — `docs/worldbuilding.md` 的内容
+- `{{TIMELINE}}` — `docs/timeline.md` 的内容
+- `{{GLOSSARY}}` — `docs/glossary.md` 的内容
+- `{{STORY_SO_FAR}}` — `summaries/story-so-far.md` 的内容
+- `{{INSTRUCTION}}` — 用户额外指令（已预留，CLI 参数尚未开放）
+
+如果某个 prompt 文件缺失，CLI 会自动回退到内置默认模板。
+
+## 输出规则
+
+- **永不覆盖** `chapters/` 中的原文
+- 正文输出到 `drafts/`，摘要输出到 `summaries/`
+- 目标文件已存在时自动增加版本号：`001.polished.md` → `001.polished.v2.md` → `001.polished.v3.md`
+
+## 配置
+
+`novel-cli` 使用三层配置，优先级从高到低：
+
+1. **环境变量** / 项目 `.env` 文件
+2. **项目级** `novel.yaml`
+3. **用户级** `~/.config/novel-cli/config.yaml`
+
+API key **只能**通过 `NOVEL_API_KEY` 环境变量或项目 `.env` 设置——不会写入任何配置文件。
+
+一次性设置用户级默认值（API 接口、模型、温度）：
 
 ```bash
 novel init-config
 ```
 
-### `novel polish <chapter-file>`
+完整的配置参考见 [docs/configuration.md](docs/configuration.md)。
 
-读取章节与项目上下文，生成润色稿，默认输出到：
+## 延伸阅读
 
-```text
-drafts/<chapter>.polished.md
-```
-
-### `novel continue <chapter-file>`
-
-从章节结尾继续写作，默认输出到：
-
-```text
-drafts/<chapter>.continued.md
-```
-
-### `novel summarize <chapter-file>`
-
-生成章节摘要，默认输出到：
-
-```text
-summaries/<chapter>.md
-```
-
-## Project Detection
-
-CLI 按以下顺序定位项目根目录：
-
-1. 从当前目录向上查找 `novel.yaml`
-2. 如果没找到，但当前目录存在 `chapters/`，则使用当前目录
-3. 否则报错并提示先运行 `novel init`
-
-## Configuration
-
-当前版本支持三类配置来源：
-
-- 用户级配置文件
-- 项目根目录的 `novel.yaml`
-- 项目 `.env` 与系统环境变量
-
-用户级配置路径：
-
-- Windows: `%APPDATA%\novel-cli\config.yaml`
-- macOS: `~/Library/Application Support/novel-cli/config.yaml`
-- Linux: `~/.config/novel-cli/config.yaml`
-
-可以先执行：
-
-```bash
-novel init-config
-```
-
-生成默认配置：
-
-```yaml
-api:
-  base_url: https://api.openai.com/v1
-
-model:
-  name: gpt-4.1-mini
-  temperature: 0.7
-```
-
-API key 仍然只通过环境变量或项目 `.env` 提供，不写入配置文件。
-
-`novel.yaml` 示例：
-
-```yaml
-project_name: my-novel
-language: zh-CN
-
-api:
-  base_url: https://api.openai.com/v1
-
-model:
-  name: gpt-4.1-mini
-  temperature: 0.7
-
-paths:
-  chapters: chapters
-  drafts: drafts
-  summaries: summaries
-  prompts: prompts
-  docs: docs
-
-context:
-  style: docs/style.md
-  characters: docs/characters.md
-  worldbuilding: docs/worldbuilding.md
-  timeline: docs/timeline.md
-  glossary: docs/glossary.md
-  story_so_far: summaries/story-so-far.md
-
-output:
-  overwrite: false
-```
-
-配置优先级：
-
-- `NOVEL_API_KEY` 只来自环境变量或项目 `.env`，必须存在
-- `NOVEL_BASE_URL` 环境变量 > 项目 `api.base_url` > 用户级 `api.base_url` > `https://api.openai.com/v1`
-- `NOVEL_MODEL` 环境变量 > 项目 `model.name` > 用户级 `model.name` > `gpt-4.1-mini`
-- `NOVEL_TEMPERATURE` 环境变量 > 项目 `model.temperature` > 用户级 `model.temperature` > `0.7`
-
-旧的用户级配置键和包含 `provider` 的项目配置不会被自动兼容，CLI 会直接报迁移错误。
-
-## Prompt Resolution
-
-每个生成命令会优先读取项目模板：
-
-```text
-prompts/polish.md
-prompts/continue.md
-prompts/summarize.md
-```
-
-如果项目模板不存在，会自动回退到 CLI 内置模板。
-
-当前支持的模板变量：
-
-- `{{CHAPTER_TEXT}}`
-- `{{STYLE_GUIDE}}`
-- `{{CHARACTERS}}`
-- `{{WORLDBUILDING}}`
-- `{{TIMELINE}}`
-- `{{GLOSSARY}}`
-- `{{STORY_SO_FAR}}`
-- `{{INSTRUCTION}}`
-
-其中 `INSTRUCTION` 在当前 MVP 中固定为空，相关命令参数还未开放。
-
-## Output Rules
-
-- 不会覆盖 `chapters/` 下的原文
-- 生成正文默认写入 `drafts/`
-- 章节摘要默认写入 `summaries/`
-- 如果目标文件已存在，会自动生成版本号
-
-例如：
-
-```text
-drafts/001.polished.md
-drafts/001.polished.v2.md
-drafts/001.polished.v3.md
-```
-
-## Context Files
-
-这些文件会在存在时自动参与 prompt 构造：
-
-- `docs/style.md`
-- `docs/characters.md`
-- `docs/worldbuilding.md`
-- `docs/timeline.md`
-- `docs/glossary.md`
-- `summaries/story-so-far.md`
-
-它们缺失时不会中断命令，只会输出 warning。
-
-## Testing
-
-运行测试：
-
-```bash
-pytest tests
-```
-
-当前仓库包含命令流程、配置读取、模板回退、输出版本化、配置迁移错误和元数据断言测试。
-
-如果要做全局安装 smoke test，推荐：
-
-```bash
-pipx install -e .
-novel --help
-novel init-config
-```
-
-## Current MVP Boundary
-
-下面这些能力还没有实现：
-
-- `novel rewrite`
-- `novel context`
-- `novel config doctor`
-- `--project`
-- `--instruction`
-- `--out`
-- `--model`
-- `--temperature`
-- `--prompt`
-- `--dry-run`
-- `--json`
-- `--overwrite`
+- [配置参考](docs/configuration.md) — 所有配置项、优先级与环境变量
+- [架构设计](docs/architecture.md) — 模块设计、数据流、设计原则
+- [贡献指南](docs/contributing.md) — 开发环境、测试、代码规范
