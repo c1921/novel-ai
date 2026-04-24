@@ -16,6 +16,9 @@ OPTIONAL_CONTEXT_FILES = {
 }
 
 
+GAP_MARKER = "<!-- GAP -->"
+
+
 @dataclass(slots=True)
 class GenerationContext:
     mode: str
@@ -24,13 +27,19 @@ class GenerationContext:
     chapter_text: str
     sections: dict[str, str]
     warnings: list[str]
+    before_gap: str = ""
+    after_gap: str = ""
 
     def template_variables(self) -> dict[str, str]:
-        return {
+        result: dict[str, str] = {
             "CHAPTER_TEXT": self.chapter_text,
             "INSTRUCTION": "",
             **self.sections,
         }
+        if self.mode == "fill":
+            result["BEFORE_GAP"] = self.before_gap
+            result["AFTER_GAP"] = self.after_gap
+        return result
 
 
 def load_generation_context(project_root: Path, chapter_file: str | Path, mode: str) -> GenerationContext:
@@ -48,6 +57,23 @@ def load_generation_context(project_root: Path, chapter_file: str | Path, mode: 
             sections[template_key] = ""
             warnings.append(f"Optional context file not found: {path}")
 
+    before_gap = ""
+    after_gap = ""
+    if mode == "fill":
+        if GAP_MARKER not in chapter_text:
+            raise NovelCliError(
+                f"Fill marker `{GAP_MARKER}` not found in chapter.",
+                "Insert `<!-- GAP -->` between two paragraphs to mark where content should be filled.",
+            )
+        parts = chapter_text.split(GAP_MARKER)
+        before_gap = parts[0].strip()
+        after_gap = parts[-1].strip()
+        if len(parts) > 2:
+            warnings.append(
+                f"Multiple `{GAP_MARKER}` markers found. Using the first one; "
+                f"{len(parts) - 1} markers ignored."
+            )
+
     return GenerationContext(
         mode=mode,
         config=config,
@@ -55,6 +81,8 @@ def load_generation_context(project_root: Path, chapter_file: str | Path, mode: 
         chapter_text=chapter_text,
         sections=sections,
         warnings=warnings,
+        before_gap=before_gap,
+        after_gap=after_gap,
     )
 
 

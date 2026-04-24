@@ -25,6 +25,7 @@ GENERATION_HELP = {
     "polish": "Polish an existing chapter.",
     "continue": "Continue writing from the end of a chapter.",
     "summarize": "Summarize a chapter into structured notes.",
+    "fill": "Fill content between two paragraphs marked with <!-- GAP -->.",
 }
 
 
@@ -171,9 +172,17 @@ def _run_generation(mode: str, chapter_file: str, *, stream: bool = True) -> int
         )
         print_step(f"[步骤 5/7] API 调用完成: 响应长度 {len(generated_text)} 字符")
 
-    # Step 6: Write output
+    # Step 6: Assemble chapter (fill mode only) and write output
+    if mode == "fill":
+        fill_len = len(generated_text)
+        generated_text = context.before_gap + "\n\n" + generated_text + "\n\n" + context.after_gap
+        print_step(
+            f"[步骤 6/7] 组装并写入文件: {output_path} "
+            f"(前段 {len(context.before_gap)} 字符 + 生成 {fill_len} 字符 + 后段 {len(context.after_gap)} 字符)"
+        )
+    else:
+        print_step(f"[步骤 6/7] 写入文件: {output_path} ({len(generated_text)} 字符)")
     write_output_file(output_path, generated_text)
-    print_step(f"[步骤 6/7] 写入文件: {output_path} ({len(generated_text)} 字符)")
 
     # Step 7: Summary (always prints to stdout)
     print_generation_summary(

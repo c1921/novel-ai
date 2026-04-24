@@ -8,6 +8,7 @@ MODE_OUTPUT_NAMES = {
     "polish": ("drafts", ".polished.md"),
     "continue": ("drafts", ".continued.md"),
     "summarize": ("summaries", ".md"),
+    "fill": ("drafts", ".filled.md"),
 }
 
 

@@ -6,7 +6,7 @@ from importlib.resources import files
 from .context_loader import GenerationContext
 from .errors import NovelCliError
 
-SUPPORTED_MODES = {"polish", "continue", "summarize"}
+SUPPORTED_MODES = {"polish", "continue", "summarize", "fill"}
 
 
 @dataclass(slots=True)

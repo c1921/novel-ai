@@ -321,3 +321,41 @@ def test_quiet_suppresses_progress_but_not_streaming(sample_project, monkeypatch
     assert exit_code == 0
     assert "[步骤" not in captured.err
     assert "quiet streamed" in captured.out
+
+
+def test_fill_writes_assembled_output(sample_project, monkeypatch) -> None:
+    # Create a chapter with gap marker
+    gap_chapter = sample_project / "chapters" / "001.md"
+    gap_chapter.write_text(
+        "这是前段的内容。\n\n<!-- GAP -->\n\n这是后段的内容。",
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "这是填补的过渡内容。")
+    monkeypatch.setattr(
+        "novel_cli.cli.call_api_stream",
+        lambda **_kwargs: iter(["这是填补的过渡内容。"]),
+    )
+
+    exit_code = main(["fill", "chapters/001.md"])
+
+    assert exit_code == 0
+    output = sample_project / "drafts" / "001.filled.md"
+    assert output.exists()
+    content = output.read_text(encoding="utf-8")
+    assert "这是前段的内容。" in content
+    assert "这是填补的过渡内容。" in content
+    assert "这是后段的内容。" in content
+
+
+def test_fill_errors_without_gap_marker(sample_project, monkeypatch, capsys) -> None:
+    # No gap marker in chapter
+    monkeypatch.chdir(sample_project)
+    monkeypatch.setattr("novel_cli.cli.call_api", lambda **_kwargs: "unused")
+    monkeypatch.setattr("novel_cli.cli.call_api_stream", lambda **_kwargs: iter(["unused"]))
+
+    exit_code = main(["fill", "chapters/001.md"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "GAP" in captured.err
